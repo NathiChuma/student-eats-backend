@@ -1,18 +1,28 @@
-const { db } = require('../../firebase.js')
-const bcrypt = require("bcrypt");
+import { RequestHandler } from "express";
+import bcrypt from "bcrypt";
+import { db } from "../../firebase";
+import { Student } from "../../types";
 
-const signup = async (req, res) => {
+interface SignupBody {
+  fullName: string;
+  studentNumber: string;
+  email: string;
+  password: string;
+}
+
+const signup: RequestHandler<{}, unknown, SignupBody> = async (req, res) => {
   try {
     const { fullName, studentNumber, email, password } = req.body;
 
+    if (!fullName || !studentNumber || !email || !password) {
+      return res.status(400).json({ error: "Missing required signup fields" });
+    }
+
     // check if email exists
-    var existingUser = await db
+    let existingUser = await db
       .collection("students")
       .where("email", "==", email)
       .get();
-
-    console.log("Email:", email);
-    console.log("Snapshot:", existingUser.empty);
 
     if (!existingUser.empty) {
       return res.status(400).json({ error: "Email already registered" });
@@ -35,22 +45,23 @@ const signup = async (req, res) => {
     // create user
     const userRef = db.collection("students").doc();
 
-    await userRef.set({
+    const student: Student = {
       fullName,
       studentNumber,
       email,
       passwordHash,
-      createdAt: new Date()
-    });
+      createdAt: new Date().toISOString(),
+    };
 
-    res.status(201).json({
+    await userRef.set(student);
+
+    return res.status(201).json({
       message: "User created successfully",
-      userId: userRef.id
+      userId: userRef.id,
     });
-
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: (error as Error).message });
   }
 };
 
-module.exports = signup;
+export default signup;

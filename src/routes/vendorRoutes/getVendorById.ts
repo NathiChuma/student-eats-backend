@@ -1,6 +1,12 @@
-const { db } = require("../../firebase");
+import { RequestHandler } from "express";
+import { db } from "../../firebase";
+import { VendorRecord, MenuItem, AddOn } from "../../types";
 
-const getVendorById = async (req, res) => {
+interface GetVendorParams {
+  id: string;
+}
+
+const getVendorById: RequestHandler<GetVendorParams> = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -16,7 +22,8 @@ const getVendorById = async (req, res) => {
     }
 
     const vendorDoc = vendorSnapshot.docs[0];
-    const vendorData = vendorDoc.data();
+    // Never expose passwordHash on the public vendor detail endpoint.
+    const { passwordHash: _omit, ...vendorData } = vendorDoc.data() as VendorRecord;
 
     // get menu items
     const menuSnapshot = await db
@@ -25,7 +32,7 @@ const getVendorById = async (req, res) => {
       .collection("menuItems")
       .get();
 
-    const menuItems = [];
+    const menuItems: MenuItem[] = [];
 
     for (const menuDoc of menuSnapshot.docs) {
       const menuData = menuDoc.data();
@@ -39,30 +46,27 @@ const getVendorById = async (req, res) => {
         .collection("addOns")
         .get();
 
-      const addOns = addOnSnapshot.docs.map(addOnDoc => ({
+      const addOns: AddOn[] = addOnSnapshot.docs.map((addOnDoc) => ({
         id: addOnDoc.id,
-        ...addOnDoc.data()
+        ...(addOnDoc.data() as Omit<AddOn, "id">),
       }));
 
       menuItems.push({
         id: menuDoc.id,
-        ...menuData,
-        addOns
+        ...(menuData as Omit<MenuItem, "id" | "addOns">),
+        addOns,
       });
     }
 
     const vendor = {
       ...vendorData,
-      menuItems
+      menuItems,
     };
 
-    res.status(200).json(vendor);
-
+    return res.status(200).json(vendor);
   } catch (error) {
-    res.status(500).json({
-      error: error.message
-    });
+    return res.status(500).json({ error: (error as Error).message });
   }
 };
 
-module.exports = getVendorById;
+export default getVendorById;

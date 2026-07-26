@@ -1,9 +1,20 @@
-const { db } = require('../../firebase.js')
-const bcrypt = require("bcrypt");
+import { RequestHandler } from "express";
+import bcrypt from "bcrypt";
+import { db } from "../../firebase";
+import { VendorRecord } from "../../types";
 
-const signin = async (req, res) => {
+interface SigninVendorBody {
+  storeCode: string;
+  password: string;
+}
+
+const signin: RequestHandler<{}, unknown, SigninVendorBody> = async (req, res) => {
   try {
     const { storeCode, password } = req.body;
+
+    if (!storeCode || !password) {
+      return res.status(400).json({ error: "Store code and password are required" });
+    }
 
     const snapshot = await db
       .collection("vendors")
@@ -11,25 +22,20 @@ const signin = async (req, res) => {
       .limit(1)
       .get();
 
-    console.log("Store Code:", storeCode);
-    console.log("Snapshot:", snapshot.empty);
-
     if (snapshot.empty) {
       return res.status(400).json({ error: "Invalid store code or password" });
     }
 
     const vendorDoc = snapshot.docs[0];
-    const vendor = vendorDoc.data();
+    const vendor = vendorDoc.data() as VendorRecord;
 
     const passwordMatch = await bcrypt.compare(password, vendor.passwordHash);
-
-    console.log("Password match:", passwordMatch);
 
     if (!passwordMatch) {
       return res.status(400).json({ error: "Invalid store code or password" });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Login successful",
       vendor: {
         id: vendorDoc.id,
@@ -39,16 +45,15 @@ const signin = async (req, res) => {
         phone: vendor.phone,
         category: vendor.category,
         bankAccount: {
-          accountName: vendor.bankAccount.accountName,
-          accountNumber: vendor.bankAccount.accountNumber,
-          bankName: vendor.bankAccount.bankName,
+          accountName: vendor.bankAccount?.accountName ?? "",
+          accountNumber: vendor.bankAccount?.accountNumber ?? "",
+          bankName: vendor.bankAccount?.bankName ?? "",
         },
       },
     });
-
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: (error as Error).message });
   }
 };
 
-module.exports = signin;
+export default signin;

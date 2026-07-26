@@ -1,9 +1,20 @@
-const { db } = require('../../firebase.js')
-const bcrypt = require("bcrypt");
+import { RequestHandler } from "express";
+import bcrypt from "bcrypt";
+import { db } from "../../firebase";
+import { Student } from "../../types";
 
-const signin = async (req, res) => {
+interface SigninBody {
+  email: string;
+  password: string;
+}
+
+const signin: RequestHandler<{}, unknown, SigninBody> = async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
 
     const snapshot = await db
       .collection("students")
@@ -11,35 +22,29 @@ const signin = async (req, res) => {
       .limit(1)
       .get();
 
-    console.log("Email:", email);
-    console.log("Snapshot:", snapshot.empty);
-
     if (snapshot.empty) {
       return res.status(400).json({ error: "Invalid email or password" });
     }
 
     const userDoc = snapshot.docs[0];
-    const user = userDoc.data();
+    const user = userDoc.data() as Student;
 
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-
-    console.log("Password match:", passwordMatch);
 
     if (!passwordMatch) {
       return res.status(400).json({ error: "Invalid email or password" });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Login successful",
       userId: userDoc.id,
       fullName: user.fullName,
       email: user.email,
-      studentNumber: user.studentNumber
+      studentNumber: user.studentNumber,
     });
-
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: (error as Error).message });
   }
 };
 
-module.exports = signin;
+export default signin;

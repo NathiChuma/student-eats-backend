@@ -1,15 +1,24 @@
-const { db } = require("../../firebase");
-const bcrypt = require("bcrypt");
+import { RequestHandler } from "express";
+import bcrypt from "bcrypt";
+import { db } from "../../firebase";
+import { VendorRecord } from "../../types";
 
-const registerVendor = async (req, res) => {
+interface SignupVendorBody {
+  storeCode: string;
+  storeName: string;
+  email: string;
+  phone: string;
+  category: string;
+  password: string;
+}
+
+const registerVendor: RequestHandler<{}, unknown, SignupVendorBody> = async (req, res) => {
   try {
     const { storeCode, storeName, email, phone, category, password } = req.body;
 
     // basic validation
     if (!storeCode || !storeName || !email || !phone || !category || !password) {
-      return res.status(400).json({
-        error: "Missing required vendor fields"
-      });
+      return res.status(400).json({ error: "Missing required vendor fields" });
     }
 
     // prevent duplicate vendor by storeCode OR email
@@ -20,9 +29,7 @@ const registerVendor = async (req, res) => {
       .get();
 
     if (!existingVendor.empty) {
-      return res.status(400).json({
-        error: "Vendor with this storeCode already exists"
-      });
+      return res.status(400).json({ error: "Vendor with this storeCode already exists" });
     }
 
     const existingEmail = await db
@@ -32,9 +39,7 @@ const registerVendor = async (req, res) => {
       .get();
 
     if (!existingEmail.empty) {
-      return res.status(400).json({
-        error: "Vendor with this email already exists"
-      });
+      return res.status(400).json({ error: "Vendor with this email already exists" });
     }
 
     // hash password
@@ -44,14 +49,14 @@ const registerVendor = async (req, res) => {
     // create new vendor doc with auto ID
     const vendorRef = db.collection("vendors").doc();
 
-    const vendorData = {
+    const vendorData: VendorRecord = {
       id: vendorRef.id, // same as document id
       storeCode,
       storeName,
-      passwordHash: passwordHash,
+      passwordHash,
       email,
       phone,
-      category: category,
+      category,
       isBusy: false,
       isOpen: false,
       description: "",
@@ -59,24 +64,24 @@ const registerVendor = async (req, res) => {
       bankAccount: {
         accountName: "",
         accountNumber: "",
-        bankName: ""
+        bankName: "",
       },
       createdAt: new Date().toISOString(),
     };
 
     await vendorRef.set(vendorData);
 
+    // Never return the password hash to the client.
+    const { passwordHash: _omit, ...vendorPublicData } = vendorData;
+
     return res.status(200).json({
       message: "Vendor registered successfully",
       vendorId: vendorRef.id,
-      vendor: vendorData
+      vendor: vendorPublicData,
     });
-
   } catch (error) {
-    return res.status(500).json({
-      error: error.message
-    });
+    return res.status(500).json({ error: (error as Error).message });
   }
 };
 
-module.exports = registerVendor;
+export default registerVendor;

@@ -1,6 +1,10 @@
-const { db } = require('../../firebase.js')
+import { RequestHandler } from "express";
+import { db } from "../../firebase";
+import { Order } from "../../types";
 
-const addOrder = async (req, res) => {
+type AddOrderBody = Order;
+
+const addOrder: RequestHandler<{}, unknown, AddOrderBody> = async (req, res) => {
   try {
     const {
       id,
@@ -11,7 +15,7 @@ const addOrder = async (req, res) => {
       totalAmount,
       status,
       createdAt,
-      paymentReference
+      paymentReference,
     } = req.body;
 
     if (
@@ -27,9 +31,7 @@ const addOrder = async (req, res) => {
       !createdAt ||
       !paymentReference
     ) {
-      return res.status(400).json({
-        error: "Missing required order fields"
-      });
+      return res.status(400).json({ error: "Missing required order fields" });
     }
 
     const existingOrderSnapshot = await db
@@ -39,14 +41,12 @@ const addOrder = async (req, res) => {
       .get();
 
     if (!existingOrderSnapshot.empty) {
-      return res.status(400).json({
-        error: "Order with this id already exists"
-      });
+      return res.status(400).json({ error: "Order with this id already exists" });
     }
 
     const orderRef = db.collection("orders").doc();
 
-    await orderRef.set({
+    const order: Order = {
       id,
       userEmail,
       vendorId,
@@ -55,19 +55,19 @@ const addOrder = async (req, res) => {
       totalAmount,
       status,
       createdAt,
-      paymentReference
-    });
+      paymentReference,
+    };
+
+    await orderRef.set(order);
 
     return res.status(201).json({
       message: "Order added successfully",
       firestoreDocId: orderRef.id,
-      orderId: id
+      orderId: id,
     });
   } catch (error) {
-    return res.status(500).json({
-      error: error.message
-    });
+    return res.status(500).json({ error: (error as Error).message });
   }
 };
 
-module.exports = addOrder;
+export default addOrder;

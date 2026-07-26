@@ -1,35 +1,86 @@
-### GET FRIENDs
-GET http://localhost:8383/friends
+@baseUrl = http://localhost:3000
 
-### GET FRIEND
-GET http://localhost:8383/friends/james
+### Health check
+GET {{baseUrl}}/health
 
-
-### ADD A FRIEND
-POST http://localhost:8383/addfriend
+### Student sign up
+POST {{baseUrl}}/auth/signup
 Content-Type: application/json
 
 {
-    "name": "banana",
-    "status": "frieind"
+  "fullName": "Jane Student",
+  "studentNumber": "12345678",
+  "email": "jane@student.example.com",
+  "password": "password123"
 }
 
-### UPDATE STATUS OF A FRIEND
-PATCH http://localhost:8383/changestatus
+### Student sign in
+POST {{baseUrl}}/auth/signin
 Content-Type: application/json
 
 {
-    "name": "tomato",
-    "newStatus": "friend"
+  "email": "jane@student.example.com",
+  "password": "password123"
 }
 
-
-###DELETE A FRIEND
-DELETE http://localhost:8383/friends
+### Vendor sign up
+POST {{baseUrl}}/vendors/signup
 Content-Type: application/json
 
 {
-    "name": "banana"
+  "storeCode": "V001",
+  "storeName": "Campus Grill",
+  "email": "vendor@example.com",
+  "phone": "0812345678",
+  "category": "Fast Food",
+  "password": "password123"
 }
 
+### Vendor sign in
+POST {{baseUrl}}/vendors/signin
+Content-Type: application/json
 
+{
+  "storeCode": "V001",
+  "password": "password123"
+}
+
+### Get all vendors
+GET {{baseUrl}}/vendors/getAllVendors
+
+### Get vendor by id
+GET {{baseUrl}}/vendors/REPLACE_WITH_VENDOR_ID
+
+### Get vendor stats
+GET {{baseUrl}}/vendors/getVendorStats/REPLACE_WITH_VENDOR_ID
+
+### Add an order
+POST {{baseUrl}}/orders/addOrder
+Content-Type: application/json
+
+{
+  "id": "order_123",
+  "userEmail": "jane@student.example.com",
+  "vendorId": "REPLACE_WITH_VENDOR_ID",
+  "vendorName": "Campus Grill",
+  "items": [
+    {
+      "id": "item_1",
+      "vendorId": "REPLACE_WITH_VENDOR_ID",
+      "menuItemId": "menu_1",
+      "menuItemName": "Cheeseburger",
+      "price": 55,
+      "quantity": 1
+    }
+  ],
+  "totalAmount": 55,
+  "status": "pending",
+  "createdAt": "2026-07-26T10:00:00.000Z",
+  "paymentReference": "ref_abc123"
+}
+
+### Get order by id
+GET {{baseUrl}}/orders/order_123
+
+### Get a user's orders
+GET {{baseUrl}}/orders/getUserOrders/jane@student.example.com
